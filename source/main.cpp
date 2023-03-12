@@ -6,6 +6,7 @@
 #include "default_shbin.h"
 #include "gui_bin.h"
 
+static CFNT_s* font;
 static C3D_Tex* glyphSheets;
 
 static void drawQuad(float x1, float y1, float x2, float y2, float tx1, float ty1, float tx2, float ty2) {
@@ -49,9 +50,10 @@ static void drawString(const char* text, float x, float y, float scaleX, float s
     }
 
     C3D_TexEnv* env = C3D_GetTexEnv(0);
-    C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, 0, 0);
-    C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_CONSTANT, 0);
-    C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
+    C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+    C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_CONSTANT, GPU_PRIMARY_COLOR);
+    C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR);
+    C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
     C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
     C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
     C3D_TexEnvColor(env, 0xFFFFFFFF);
@@ -67,10 +69,10 @@ static void drawString(const char* text, float x, float y, float scaleX, float s
 
         if(code == '\n') {
             currX = x;
-            y += scaleY * fontGetInfo()->lineFeed;
+            y += scaleY * fontGetInfo(font)->lineFeed;
         } else {
             fontGlyphPos_s data;
-            fontCalcGlyphPos(&data, fontGlyphIndexFromCodePoint(code), GLYPH_POS_CALC_VTXCOORD, scaleX, scaleY);
+            fontCalcGlyphPos(&data, font, fontGlyphIndexFromCodePoint(font, code), GLYPH_POS_CALC_VTXCOORD, scaleX, scaleY);
 
             if(data.sheetIndex != lastSheet) {
                 lastSheet = data.sheetIndex;
@@ -84,8 +86,9 @@ static void drawString(const char* text, float x, float y, float scaleX, float s
     }
 
     env = C3D_GetTexEnv(0);
-    C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
-    C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
+    C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+    C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR);
+    C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
     C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 }
 
@@ -95,11 +98,11 @@ int main(int argc, char **argv) {
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
 
     C3D_RenderTarget* bottomTarget = C3D_RenderTargetCreate(240, 320, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
-    C3D_RenderTargetSetClear(bottomTarget, C3D_CLEAR_ALL, 0, 0);
+    C3D_RenderTargetClear(bottomTarget, C3D_CLEAR_ALL, 0, 0);
     C3D_RenderTargetSetOutput(bottomTarget, GFX_BOTTOM, GFX_LEFT, GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
 
     C3D_RenderTarget* topTarget = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
-    C3D_RenderTargetSetClear(topTarget, C3D_CLEAR_ALL, 0, 0);
+    C3D_RenderTargetClear(topTarget, C3D_CLEAR_ALL, 0, 0);
     C3D_RenderTargetSetOutput(topTarget, GFX_TOP, GFX_LEFT, GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
 
     DVLB_s* dvlb = DVLB_ParseFile((u32*) default_shbin, default_shbin_len);
@@ -115,8 +118,9 @@ int main(int argc, char **argv) {
     AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 2);
 
     C3D_TexEnv* env = C3D_GetTexEnv(0);
-    C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
-    C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
+    C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+    C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR);
+    C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
     C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 
     C3D_DepthTest(true, GPU_GEQUAL, GPU_WRITE_ALL);
@@ -128,12 +132,13 @@ int main(int argc, char **argv) {
     Mtx_OrthoTilt(&topProjection, 0.0, 400.0, 240.0, 0.0, 0.0, 1.0, true);
 
     if(R_SUCCEEDED(fontEnsureMapped())) {
-        TGLP_s* glyphInfo = fontGetGlyphInfo();
+        font = fontGetSystemFont();
+        TGLP_s* glyphInfo = fontGetGlyphInfo(font);
         glyphSheets = (C3D_Tex*) calloc(glyphInfo->nSheets, sizeof(C3D_Tex));
         if(glyphSheets != NULL) {
             for(int i = 0; i < glyphInfo->nSheets; i++) {
                 C3D_Tex* tex = &glyphSheets[i];
-                tex->data = fontGetGlyphSheetTex(i);
+                tex->data = fontGetGlyphSheetTex(font, i);
                 tex->fmt = (GPU_TEXCOLOR) glyphInfo->sheetFmt;
                 tex->size = glyphInfo->sheetSize;
                 tex->width = glyphInfo->sheetWidth;
@@ -175,8 +180,7 @@ int main(int argc, char **argv) {
     memset(&guiTexture, 0, sizeof(guiTexture));
     C3D_TexInit(&guiTexture, 512, 64, GPU_RGBA8);
     C3D_TexSetFilter(&guiTexture, GPU_NEAREST, GPU_NEAREST);
-    C3D_SafeDisplayTransfer((u32*) gpuGuiTexture, GX_BUFFER_DIM(512, 64), (u32*) guiTexture.data, GX_BUFFER_DIM(512, 64), GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT(GPU_RGBA8) | GX_TRANSFER_OUT_FORMAT(GPU_RGBA8) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
-    gspWaitForPPF();
+    C3D_SyncDisplayTransfer((u32*) gpuGuiTexture, GX_BUFFER_DIM(512, 64), (u32*) guiTexture.data, GX_BUFFER_DIM(512, 64), GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT(GPU_RGBA8) | GX_TRANSFER_OUT_FORMAT(GPU_RGBA8) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
 
     linearFree(gpuGuiTexture);
 
@@ -389,6 +393,8 @@ int main(int argc, char **argv) {
         free(glyphSheets);
         glyphSheets = NULL;
     }
+
+    font = NULL;
 
     shaderProgramFree(&program);
     DVLB_Free(dvlb);
